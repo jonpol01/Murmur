@@ -100,8 +100,8 @@ final class TranslatorModel: ObservableObject {
         originalText = ""
         translatedText = ""
         subtitleLines.removeAll()
-        subtitleSegments.removeAll()
-        lastTranslatedSource = ""
+        pendingPartialText = nil
+        partialInFlight = false
 
         DebugLog.log("Model", "Starting pipeline: source=\(sourceLanguageCode) target=\(targetLanguageCode) engine=\(speechEngine.rawValue)")
 
@@ -187,53 +187,63 @@ final class TranslatorModel: ObservableObject {
 
     // MARK: - Transcript Handling
 
-    /// Rolling subtitle lines — keeps only the last N segments visible, like real subtitles.
-    private var subtitleSegments: [String] = []
-    private let maxSubtitleSegments = 3
-    private var lastTranslatedSource: String = ""
-    private var partialThrottleTask: Task<Void, Never>?
     /// Generation counter — lets in-flight translations finish without cancelling
     /// the XPC connection, while still discarding stale results.
     private var translationGeneration = 0
+    /// True while an XPC translate call is in-flight for a partial.
+    private var partialInFlight = false
+    /// Latest partial text that arrived while a translation was in-flight.
+    private var pendingPartialText: String?
 
     private func handleTranscript(_ text: String, isFinal: Bool) {
         originalText = text
 
         if isFinal {
-            // Segment complete — push as a finished subtitle line
             let finalOriginal = text
-            partialThrottleTask?.cancel()
-            lastTranslatedSource = ""
+            pendingPartialText = nil
+            partialInFlight = false
             translationGeneration += 1
             let gen = translationGeneration
 
             translationTask = Task {
                 let translated = await getTranslation(finalOriginal)
                 guard gen == self.translationGeneration else { return }
-                // Push the completed line and slide up
                 subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
                 if subtitleLines.count > maxVisibleLines {
                     subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
                 }
-                // Clear the "current" text since it's now in the lines
                 translatedText = ""
                 originalText = ""
             }
             return
         }
 
-        // Partial: debounce — only translate after text is stable for 300ms
-        partialThrottleTask?.cancel()
-        partialThrottleTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled else { return }
-            self.lastTranslatedSource = text
-            self.translationGeneration += 1
-            let gen = self.translationGeneration
-            self.translationTask = Task {
-                let translated = await self.getTranslation(text)
-                guard gen == self.translationGeneration else { return }
-                self.translatedText = translated
+        // Partial: if a translation is already in-flight, just save the latest
+        // text — it will be picked up when the current translation completes.
+        // Otherwise translate immediately. No debounce, naturally rate-limited
+        // by the XPC round-trip time.
+        if partialInFlight {
+            pendingPartialText = text
+        } else {
+            translatePartial(text)
+        }
+    }
+
+    private func translatePartial(_ text: String) {
+        partialInFlight = true
+        translationGeneration += 1
+        let gen = translationGeneration
+
+        translationTask = Task {
+            let translated = await self.getTranslation(text)
+            self.partialInFlight = false
+            guard gen == self.translationGeneration else { return }
+            self.translatedText = translated
+
+            // Drain: if newer text arrived while we were translating, go again
+            if let pending = self.pendingPartialText {
+                self.pendingPartialText = nil
+                self.translatePartial(pending)
             }
         }
     }
