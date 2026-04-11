@@ -215,7 +215,11 @@ final class TranslatorModel: ObservableObject {
 
         // Partial: only DISPLAY the tail after the last sentence-ender.
         // Never commit during partials — the recognizer revises text freely.
-        let tail = tailAfterLastSentence(text)
+        // Cap to ~80 chars so the display stays within 2 lines.
+        var tail = tailAfterLastSentence(text)
+        if tail.count > 80 {
+            tail = String(tail.suffix(80))
+        }
         originalText = tail
         pendingPartialText = tail
         drainQueue()

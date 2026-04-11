@@ -146,7 +146,7 @@ struct OverlayView: View {
                         .foregroundStyle(.white.opacity(model.translatedText.isEmpty ? 0 : 1))
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
-                        .truncationMode(.tail)
+                        .truncationMode(.head)
                 }
                 .frame(maxWidth: .infinity)
             }
