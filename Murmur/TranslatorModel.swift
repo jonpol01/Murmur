@@ -192,6 +192,9 @@ final class TranslatorModel: ObservableObject {
     private let maxSubtitleSegments = 3
     private var lastTranslatedSource: String = ""
     private var partialThrottleTask: Task<Void, Never>?
+    /// Generation counter — lets in-flight translations finish without cancelling
+    /// the XPC connection, while still discarding stale results.
+    private var translationGeneration = 0
 
     private func handleTranscript(_ text: String, isFinal: Bool) {
         originalText = text
@@ -200,46 +203,37 @@ final class TranslatorModel: ObservableObject {
             // Segment complete — push as a finished subtitle line
             let finalOriginal = text
             partialThrottleTask?.cancel()
-            translationTask?.cancel()
             lastTranslatedSource = ""
+            translationGeneration += 1
+            let gen = translationGeneration
 
             translationTask = Task {
                 let translated = await getTranslation(finalOriginal)
-                if !Task.isCancelled {
-                    // Push the completed line and slide up
-                    subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
-                    if subtitleLines.count > maxVisibleLines {
-                        subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
-                    }
-                    // Clear the "current" text since it's now in the lines
-                    translatedText = ""
-                    originalText = ""
+                guard gen == self.translationGeneration else { return }
+                // Push the completed line and slide up
+                subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
+                if subtitleLines.count > maxVisibleLines {
+                    subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
                 }
+                // Clear the "current" text since it's now in the lines
+                translatedText = ""
+                originalText = ""
             }
             return
         }
 
-        // Partial: show as the current in-progress line
-        let changed = text.count - lastTranslatedSource.count
-        if changed >= 3 || lastTranslatedSource.isEmpty {
-            partialThrottleTask?.cancel()
-            translationTask?.cancel()
-            lastTranslatedSource = text
-            translationTask = Task {
-                let translated = await getTranslation(text)
-                if !Task.isCancelled { translatedText = translated }
-            }
-        } else {
-            partialThrottleTask?.cancel()
-            partialThrottleTask = Task {
-                try? await Task.sleep(nanoseconds: 150_000_000)
-                guard !Task.isCancelled else { return }
-                self.translationTask?.cancel()
-                self.lastTranslatedSource = text
-                self.translationTask = Task {
-                    let translated = await self.getTranslation(text)
-                    if !Task.isCancelled { self.translatedText = translated }
-                }
+        // Partial: debounce — only translate after text is stable for 300ms
+        partialThrottleTask?.cancel()
+        partialThrottleTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            self.lastTranslatedSource = text
+            self.translationGeneration += 1
+            let gen = self.translationGeneration
+            self.translationTask = Task {
+                let translated = await self.getTranslation(text)
+                guard gen == self.translationGeneration else { return }
+                self.translatedText = translated
             }
         }
     }

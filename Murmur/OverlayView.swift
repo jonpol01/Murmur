@@ -112,8 +112,6 @@ struct OverlayView: View {
 
             // Subtitle content — pinned to bottom, grows upward
             VStack(spacing: 2) {
-                Spacer()
-
                 if !model.isListening && model.subtitleLines.isEmpty && model.translatedText.isEmpty {
                     Text(isSubtitleMode ? "Ready for subtitles" : "Ready to translate")
                         .font(.system(size: CGFloat(model.fontSize * 0.85), weight: .regular))
@@ -150,11 +148,12 @@ struct OverlayView: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.top, 36)
             .padding(.bottom, 12)
-            .clipShape(Rectangle())
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.top, 36)
+            .clipped()
 
-            // Control bar
+            // Control bar — must not animate with subtitle transitions
             HStack {
                 // Left: listening indicator + toggle + language picker
                 HStack(spacing: 6) {
@@ -234,6 +233,7 @@ struct OverlayView: View {
             .padding(.horizontal, 10)
             .padding(.top, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .transaction { $0.animation = nil }
 
             // Error banner
             if let error = model.pipelineError {
