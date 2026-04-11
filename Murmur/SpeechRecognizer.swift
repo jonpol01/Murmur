@@ -24,6 +24,8 @@ final class AppleSpeechRecognizer: SpeechRecognizerProtocol, @unchecked Sendable
     private var feedCount = 0
     private var restartCount = 0
     private var lastResultTime = Date()
+    private var lastResultText = ""
+    private var staleTextTime = Date()
     private var watchdogTask: Task<Void, Never>?
 
     init(locale: Locale) {
@@ -128,18 +130,28 @@ final class AppleSpeechRecognizer: SpeechRecognizerProtocol, @unchecked Sendable
                 self.lastResultTime = Date()
                 let text = result.bestTranscription.formattedString
                 let isFinal = result.isFinal
-                DebugLog.log("Speech", "Result(\(isFinal ? "FINAL" : "partial")): \(text.prefix(60))")
+
+                // Track if text stopped changing (stale partial)
+                if text != self.lastResultText {
+                    self.lastResultText = text
+                    self.staleTextTime = Date()
+                }
 
                 self.onTranscript?(text, isFinal)
 
                 if isFinal {
+                    self.lastResultText = ""
                     self.restart()
                 }
             }
-            if let error {
-                DebugLog.log("Speech", "Error: \(error.localizedDescription) (code=\((error as NSError).code))")
-                if result == nil {
-                    self.restart()
+            if let error, result == nil {
+                let code = (error as NSError).code
+                // 1110 = "No speech detected" — stale error from previous task, ignore it.
+                // 216 = "Request was cancelled" — we cancelled it ourselves, ignore.
+                // Only restart on genuine errors (e.g. 203 = retry, 209 = not authorized)
+                if code != 1110 && code != 216 {
+                    DebugLog.log("Speech", "Error code=\(code), restarting")
+                    self.restartWithCooldown()
                 }
             }
         }
@@ -149,23 +161,49 @@ final class AppleSpeechRecognizer: SpeechRecognizerProtocol, @unchecked Sendable
     private func restart() {
         guard isRunning else { return }
         restartCount += 1
-        DebugLog.log("Speech", "Restarting (#\(restartCount))...")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self, self.isRunning else { return }
             self.startRecognitionTask()
         }
     }
 
-    /// Watchdog: if no results for 10s, force-restart.
+    /// Restart with a longer cooldown to prevent rapid restart loops.
+    private func restartWithCooldown() {
+        guard isRunning else { return }
+        restartCount += 1
+        // 2 second cooldown — lets audio buffer up so the next task has something to work with
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self, self.isRunning else { return }
+            DebugLog.log("Speech", "Restart #\(self.restartCount) after cooldown")
+            self.startRecognitionTask()
+        }
+    }
+
+    /// Watchdog: handles two cases:
+    /// 1. No results at all for 10s → restart
+    /// 2. Same partial text repeating for 3s → treat as final and restart
     private func startWatchdog() {
         watchdogTask?.cancel()
         watchdogTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // check every 2s
                 guard let self, self.isRunning, !Task.isCancelled else { break }
-                let elapsed = Date().timeIntervalSince(self.lastResultTime)
-                if elapsed > 10 {
-                    DebugLog.log("Speech", "Watchdog: no results for \(Int(elapsed))s, restarting")
+
+                // Case 1: no results at all
+                let silenceElapsed = Date().timeIntervalSince(self.lastResultTime)
+                if silenceElapsed > 10 {
+                    DebugLog.log("Speech", "Watchdog: silence for \(Int(silenceElapsed))s, restarting")
+                    self.restart()
+                    continue
+                }
+
+                // Case 2: text stopped changing — force it as "final"
+                let staleElapsed = Date().timeIntervalSince(self.staleTextTime)
+                if staleElapsed > 3 && !self.lastResultText.isEmpty {
+                    DebugLog.log("Speech", "Watchdog: text stale for \(Int(staleElapsed))s, forcing final")
+                    let text = self.lastResultText
+                    self.lastResultText = ""
+                    self.onTranscript?(text, true) // force as final
                     self.restart()
                 }
             }

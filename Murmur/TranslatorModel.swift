@@ -47,6 +47,15 @@ final class TranslatorModel: ObservableObject {
     @Published var translatedText: String = ""
     @Published var isTranslating: Bool = false
 
+    // Scrolling subtitle lines
+    struct SubtitleLine: Identifiable {
+        let id = UUID()
+        let original: String
+        let translated: String
+    }
+    @Published var subtitleLines: [SubtitleLine] = []
+    private let maxVisibleLines = 4
+
     // Settings (persisted)
     @Published var sourceLanguageCode: String = "ja"
     @Published var targetLanguageCode: String = "en"
@@ -90,6 +99,7 @@ final class TranslatorModel: ObservableObject {
         pipelineError = nil
         originalText = ""
         translatedText = ""
+        subtitleLines.removeAll()
         subtitleSegments.removeAll()
         lastTranslatedSource = ""
 
@@ -184,31 +194,41 @@ final class TranslatorModel: ObservableObject {
     private var partialThrottleTask: Task<Void, Never>?
 
     private func handleTranscript(_ text: String, isFinal: Bool) {
-        // Build display: previous segments + current partial/final
-        let previousLines = subtitleSegments.suffix(maxSubtitleSegments - 1).joined(separator: " ")
-        let displayText = previousLines.isEmpty ? text : "\(previousLines) \(text)"
-        originalText = displayText
+        originalText = text
 
         if isFinal {
-            // Segment complete — archive it and start fresh
-            subtitleSegments.append(text)
-            if subtitleSegments.count > maxSubtitleSegments {
-                subtitleSegments.removeFirst(subtitleSegments.count - maxSubtitleSegments)
-            }
+            // Segment complete — push as a finished subtitle line
+            let finalOriginal = text
             partialThrottleTask?.cancel()
             translationTask?.cancel()
             lastTranslatedSource = ""
-            translationTask = Task { await translateText(displayText) }
+
+            translationTask = Task {
+                let translated = await getTranslation(finalOriginal)
+                if !Task.isCancelled {
+                    // Push the completed line and slide up
+                    subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
+                    if subtitleLines.count > maxVisibleLines {
+                        subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
+                    }
+                    // Clear the "current" text since it's now in the lines
+                    translatedText = ""
+                    originalText = ""
+                }
+            }
             return
         }
 
-        // Partial: translate if enough changed
+        // Partial: show as the current in-progress line
         let changed = text.count - lastTranslatedSource.count
         if changed >= 3 || lastTranslatedSource.isEmpty {
             partialThrottleTask?.cancel()
             translationTask?.cancel()
             lastTranslatedSource = text
-            translationTask = Task { await translateText(displayText) }
+            translationTask = Task {
+                let translated = await getTranslation(text)
+                if !Task.isCancelled { translatedText = translated }
+            }
         } else {
             partialThrottleTask?.cancel()
             partialThrottleTask = Task {
@@ -216,69 +236,28 @@ final class TranslatorModel: ObservableObject {
                 guard !Task.isCancelled else { return }
                 self.translationTask?.cancel()
                 self.lastTranslatedSource = text
-                self.translationTask = Task { await self.translateText(displayText) }
+                self.translationTask = Task {
+                    let translated = await self.getTranslation(text)
+                    if !Task.isCancelled { self.translatedText = translated }
+                }
             }
         }
     }
 
-    private func translateText(_ text: String) async {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            translatedText = ""
-            return
-        }
+    /// Get translation or pass-through for same-language mode.
+    private func getTranslation(_ text: String) async -> String {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
+        if sourceLanguageCode == targetLanguageCode { return text }
 
-        // Same language — just show the transcript, no translation needed
-        if sourceLanguageCode == targetLanguageCode {
-            if !Task.isCancelled {
-                translatedText = text
-                pipelineError = nil
-            }
-            return
-        }
-
-        let sourceLocale: Locale.Language?
-        if sourceLanguageCode == "auto" {
-            sourceLocale = nil
-        } else {
-            sourceLocale = Locale.Language(identifier: sourceLanguageCode)
-        }
-        let targetLocale = Locale.Language(identifier: targetLanguageCode)
-
-        isTranslating = true
-        defer { isTranslating = false }
-
-        guard #available(macOS 26.0, *) else {
-            if !Task.isCancelled {
-                translatedText = text
-            }
-            return
-        }
+        guard #available(macOS 26.0, *) else { return text }
 
         do {
-            if translationService == nil {
-                translationService = TranslationService()
-            }
-            let result = try await translationService!.translate(
-                text,
-                from: sourceLocale,
-                to: targetLocale
-            )
-            if !Task.isCancelled {
-                translatedText = result
-                pipelineError = nil
-            }
+            if translationService == nil { translationService = TranslationService() }
+            let sourceLocale: Locale.Language? = sourceLanguageCode == "auto" ? nil : Locale.Language(identifier: sourceLanguageCode)
+            let targetLocale = Locale.Language(identifier: targetLanguageCode)
+            return try await translationService!.translate(text, from: sourceLocale, to: targetLocale)
         } catch {
-            NSLog("[Model] Translation error: %@", error.localizedDescription)
-            if !Task.isCancelled {
-                // Show original text when translation fails
-                translatedText = text
-                let desc = error.localizedDescription
-                if desc.contains("16") || desc.contains("download") {
-                    pipelineError = "Language pack not downloaded. Go to System Settings > General > Language & Region > Translation Languages"
-                } else {
-                    pipelineError = "Translation: \(desc)"
-                }
-            }
+            return text
         }
     }
 
