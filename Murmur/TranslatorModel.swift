@@ -54,7 +54,7 @@ final class TranslatorModel: ObservableObject {
         let translated: String
     }
     @Published var subtitleLines: [SubtitleLine] = []
-    private let maxVisibleLines = 4
+    private let maxVisibleLines = 2
 
     // Settings (persisted)
     @Published var sourceLanguageCode: String = "ja"
@@ -100,8 +100,9 @@ final class TranslatorModel: ObservableObject {
         originalText = ""
         translatedText = ""
         subtitleLines.removeAll()
-        subtitleSegments.removeAll()
-        lastTranslatedSource = ""
+        pendingPartialText = nil
+        pendingCommits.removeAll()
+        translating = false
 
         DebugLog.log("Model", "Starting pipeline: source=\(sourceLanguageCode) target=\(targetLanguageCode) engine=\(speechEngine.rawValue)")
 
@@ -187,61 +188,111 @@ final class TranslatorModel: ObservableObject {
 
     // MARK: - Transcript Handling
 
-    /// Rolling subtitle lines — keeps only the last N segments visible, like real subtitles.
-    private var subtitleSegments: [String] = []
-    private let maxSubtitleSegments = 3
-    private var lastTranslatedSource: String = ""
-    private var partialThrottleTask: Task<Void, Never>?
+    /// Generation counter for partial translations — stale partials are discarded.
+    private var translationGeneration = 0
+    /// True while ANY XPC translate call is in-flight (commit or partial).
+    private var translating = false
+    /// Latest partial text queued while a translation was in-flight.
+    private var pendingPartialText: String?
+    /// Completed sentences queued for translation.
+    private var pendingCommits: [String] = []
+
+    private static let sentenceEndChars = Set<Character>(["。", "！", "？", ".", "!", "?"])
 
     private func handleTranscript(_ text: String, isFinal: Bool) {
-        originalText = text
-
         if isFinal {
-            // Segment complete — push as a finished subtitle line
-            let finalOriginal = text
-            partialThrottleTask?.cancel()
-            translationTask?.cancel()
-            lastTranslatedSource = ""
+            pendingPartialText = nil
+            originalText = ""
+            translatedText = ""
 
-            translationTask = Task {
-                let translated = await getTranslation(finalOriginal)
-                if !Task.isCancelled {
-                    // Push the completed line and slide up
-                    subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
-                    if subtitleLines.count > maxVisibleLines {
-                        subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
-                    }
-                    // Clear the "current" text since it's now in the lines
-                    translatedText = ""
-                    originalText = ""
+            // Split final text at sentence boundaries so each becomes its own line
+            for sentence in splitSentences(text) {
+                pendingCommits.append(sentence)
+            }
+            drainQueue()
+            return
+        }
+
+        // Partial: only DISPLAY the tail after the last sentence-ender.
+        // Never commit during partials — the recognizer revises text freely.
+        // Cap to ~80 chars so the display stays within 2 lines.
+        var tail = tailAfterLastSentence(text)
+        if tail.count > 80 {
+            tail = String(tail.suffix(80))
+        }
+        originalText = tail
+        pendingPartialText = tail
+        drainQueue()
+    }
+
+    /// Returns the fragment after the last sentence-ending punctuation,
+    /// or the full text if no sentence boundary exists.
+    private func tailAfterLastSentence(_ text: String) -> String {
+        guard let endIdx = lastSentenceEndIndex(in: text) else { return text }
+        let after = String(text[text.index(after: endIdx)...])
+            .trimmingCharacters(in: .whitespaces)
+        return after.isEmpty ? text : after
+    }
+
+    /// Split text into individual sentences at sentence-ending punctuation.
+    private func splitSentences(_ text: String) -> [String] {
+        var sentences: [String] = []
+        var current = ""
+        for char in text {
+            current.append(char)
+            if Self.sentenceEndChars.contains(char) {
+                let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { sentences.append(trimmed) }
+                current = ""
+            }
+        }
+        let remainder = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !remainder.isEmpty { sentences.append(remainder) }
+        return sentences
+    }
+
+    /// Process one item at a time: commits first, then the latest partial.
+    /// Ensures only ONE XPC translate call is in-flight at any moment.
+    private func drainQueue() {
+        guard !translating else { return }
+
+        if let commit = pendingCommits.first {
+            pendingCommits.removeFirst()
+            translating = true
+            Task {
+                let translated = await getTranslation(commit)
+                subtitleLines.append(SubtitleLine(original: commit, translated: translated))
+                if subtitleLines.count > maxVisibleLines {
+                    subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
                 }
+                translating = false
+                drainQueue()
             }
             return
         }
 
-        // Partial: show as the current in-progress line
-        let changed = text.count - lastTranslatedSource.count
-        if changed >= 3 || lastTranslatedSource.isEmpty {
-            partialThrottleTask?.cancel()
-            translationTask?.cancel()
-            lastTranslatedSource = text
-            translationTask = Task {
-                let translated = await getTranslation(text)
-                if !Task.isCancelled { translatedText = translated }
-            }
-        } else {
-            partialThrottleTask?.cancel()
-            partialThrottleTask = Task {
-                try? await Task.sleep(nanoseconds: 150_000_000)
-                guard !Task.isCancelled else { return }
-                self.translationTask?.cancel()
-                self.lastTranslatedSource = text
-                self.translationTask = Task {
-                    let translated = await self.getTranslation(text)
-                    if !Task.isCancelled { self.translatedText = translated }
+        if let partial = pendingPartialText {
+            pendingPartialText = nil
+            translating = true
+            translationGeneration += 1
+            let gen = translationGeneration
+            Task {
+                let translated = await self.getTranslation(partial)
+                self.translating = false
+                if gen == self.translationGeneration {
+                    self.translatedText = translated
                 }
+                self.drainQueue()
             }
         }
+    }
+
+    private func lastSentenceEndIndex(in text: String) -> String.Index? {
+        var last: String.Index?
+        for idx in text.indices where Self.sentenceEndChars.contains(text[idx]) {
+            last = idx
+        }
+        return last
     }
 
     /// Get translation or pass-through for same-language mode.
