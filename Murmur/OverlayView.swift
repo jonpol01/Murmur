@@ -110,48 +110,49 @@ struct OverlayView: View {
                     }
                 )
 
-            // Subtitle content — pinned to bottom, grows upward
-            VStack(spacing: 2) {
-                if !model.isListening && model.subtitleLines.isEmpty && model.translatedText.isEmpty {
-                    Text(isSubtitleMode ? "Ready for subtitles" : "Ready to translate")
-                        .font(.system(size: CGFloat(model.fontSize * 0.85), weight: .regular))
-                        .foregroundStyle(.white.opacity(0.3))
-                } else if model.isListening && model.subtitleLines.isEmpty && model.originalText.isEmpty {
-                    listeningIndicator
-                } else {
-                    // Completed lines — oldest at top, newest at bottom
-                    ForEach(Array(model.subtitleLines.enumerated()), id: \.element.id) { index, line in
-                        let opacity = lineOpacity(index: index, total: model.subtitleLines.count)
-                        subtitleLineView(line, opacity: opacity)
-                    }
-                    .animation(.easeInOut(duration: 0.25), value: model.subtitleLines.count)
-
-                    // Current in-progress line — always at the very bottom
-                    if !model.translatedText.isEmpty {
-                        VStack(spacing: 1) {
-                            if model.displayMode == .both && !isSubtitleMode && !model.originalText.isEmpty {
-                                Text(model.originalText)
-                                    .font(.system(size: CGFloat(model.fontSize * 0.7), weight: .regular))
-                                    .foregroundStyle(.white.opacity(0.4))
-                                    .lineLimit(1)
-                                    .multilineTextAlignment(.center)
-                            }
-                            Text(model.translatedText)
-                                .font(.system(size: CGFloat(model.fontSize), weight: .medium))
-                                .foregroundStyle(.white)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                                .truncationMode(.tail)
+            // Subtitle content — two fixed zones
+            VStack(spacing: 4) {
+                // Zone 1: Completed lines — scroll upward, fill available space
+                VStack(spacing: 2) {
+                    if !model.isListening && model.subtitleLines.isEmpty && model.translatedText.isEmpty {
+                        Text(isSubtitleMode ? "Ready for subtitles" : "Ready to translate")
+                            .font(.system(size: CGFloat(model.fontSize * 0.85), weight: .regular))
+                            .foregroundStyle(.white.opacity(0.3))
+                    } else if model.isListening && model.subtitleLines.isEmpty && model.originalText.isEmpty {
+                        listeningIndicator
+                    } else {
+                        ForEach(Array(model.subtitleLines.enumerated()), id: \.element.id) { index, line in
+                            let opacity = lineOpacity(index: index, total: model.subtitleLines.count)
+                            subtitleLineView(line, opacity: opacity)
                         }
-                        .frame(maxWidth: .infinity)
+                        .animation(.easeInOut(duration: 0.25), value: model.subtitleLines.count)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .clipped()
+                .geometryGroup()
+
+                // Zone 2: Current in-progress line — fixed at bottom, never moves
+                VStack(spacing: 1) {
+                    if model.displayMode == .both && !isSubtitleMode && !model.originalText.isEmpty {
+                        Text(model.originalText)
+                            .font(.system(size: CGFloat(model.fontSize * 0.7), weight: .regular))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .lineLimit(1)
+                            .multilineTextAlignment(.center)
+                    }
+                    Text(model.translatedText.isEmpty ? " " : model.translatedText)
+                        .font(.system(size: CGFloat(model.fontSize), weight: .medium))
+                        .foregroundStyle(.white.opacity(model.translatedText.isEmpty ? 0 : 1))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .truncationMode(.tail)
+                }
+                .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             .padding(.top, 36)
-            .clipped()
 
             // Control bar — must not animate with subtitle transitions
             HStack {

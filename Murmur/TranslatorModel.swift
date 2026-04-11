@@ -54,7 +54,7 @@ final class TranslatorModel: ObservableObject {
         let translated: String
     }
     @Published var subtitleLines: [SubtitleLine] = []
-    private let maxVisibleLines = 4
+    private let maxVisibleLines = 2
 
     // Settings (persisted)
     @Published var sourceLanguageCode: String = "ja"
@@ -101,7 +101,8 @@ final class TranslatorModel: ObservableObject {
         translatedText = ""
         subtitleLines.removeAll()
         pendingPartialText = nil
-        partialInFlight = false
+        pendingCommits.removeAll()
+        translating = false
 
         DebugLog.log("Model", "Starting pipeline: source=\(sourceLanguageCode) target=\(targetLanguageCode) engine=\(speechEngine.rawValue)")
 
@@ -187,65 +188,107 @@ final class TranslatorModel: ObservableObject {
 
     // MARK: - Transcript Handling
 
-    /// Generation counter — lets in-flight translations finish without cancelling
-    /// the XPC connection, while still discarding stale results.
+    /// Generation counter for partial translations — stale partials are discarded.
     private var translationGeneration = 0
-    /// True while an XPC translate call is in-flight for a partial.
-    private var partialInFlight = false
-    /// Latest partial text that arrived while a translation was in-flight.
+    /// True while ANY XPC translate call is in-flight (commit or partial).
+    private var translating = false
+    /// Latest partial text queued while a translation was in-flight.
     private var pendingPartialText: String?
+    /// Completed sentences queued for translation.
+    private var pendingCommits: [String] = []
+
+    private static let sentenceEndChars = Set<Character>(["。", "！", "？", ".", "!", "?"])
 
     private func handleTranscript(_ text: String, isFinal: Bool) {
-        originalText = text
-
         if isFinal {
-            let finalOriginal = text
             pendingPartialText = nil
-            partialInFlight = false
-            translationGeneration += 1
-            let gen = translationGeneration
+            originalText = ""
+            translatedText = ""
 
-            translationTask = Task {
-                let translated = await getTranslation(finalOriginal)
-                guard gen == self.translationGeneration else { return }
-                subtitleLines.append(SubtitleLine(original: finalOriginal, translated: translated))
+            // Split final text at sentence boundaries so each becomes its own line
+            for sentence in splitSentences(text) {
+                pendingCommits.append(sentence)
+            }
+            drainQueue()
+            return
+        }
+
+        // Partial: only DISPLAY the tail after the last sentence-ender.
+        // Never commit during partials — the recognizer revises text freely.
+        let tail = tailAfterLastSentence(text)
+        originalText = tail
+        pendingPartialText = tail
+        drainQueue()
+    }
+
+    /// Returns the fragment after the last sentence-ending punctuation,
+    /// or the full text if no sentence boundary exists.
+    private func tailAfterLastSentence(_ text: String) -> String {
+        guard let endIdx = lastSentenceEndIndex(in: text) else { return text }
+        let after = String(text[text.index(after: endIdx)...])
+            .trimmingCharacters(in: .whitespaces)
+        return after.isEmpty ? text : after
+    }
+
+    /// Split text into individual sentences at sentence-ending punctuation.
+    private func splitSentences(_ text: String) -> [String] {
+        var sentences: [String] = []
+        var current = ""
+        for char in text {
+            current.append(char)
+            if Self.sentenceEndChars.contains(char) {
+                let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { sentences.append(trimmed) }
+                current = ""
+            }
+        }
+        let remainder = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !remainder.isEmpty { sentences.append(remainder) }
+        return sentences
+    }
+
+    /// Process one item at a time: commits first, then the latest partial.
+    /// Ensures only ONE XPC translate call is in-flight at any moment.
+    private func drainQueue() {
+        guard !translating else { return }
+
+        if let commit = pendingCommits.first {
+            pendingCommits.removeFirst()
+            translating = true
+            Task {
+                let translated = await getTranslation(commit)
+                subtitleLines.append(SubtitleLine(original: commit, translated: translated))
                 if subtitleLines.count > maxVisibleLines {
                     subtitleLines.removeFirst(subtitleLines.count - maxVisibleLines)
                 }
-                translatedText = ""
-                originalText = ""
+                translating = false
+                drainQueue()
             }
             return
         }
 
-        // Partial: if a translation is already in-flight, just save the latest
-        // text — it will be picked up when the current translation completes.
-        // Otherwise translate immediately. No debounce, naturally rate-limited
-        // by the XPC round-trip time.
-        if partialInFlight {
-            pendingPartialText = text
-        } else {
-            translatePartial(text)
+        if let partial = pendingPartialText {
+            pendingPartialText = nil
+            translating = true
+            translationGeneration += 1
+            let gen = translationGeneration
+            Task {
+                let translated = await self.getTranslation(partial)
+                self.translating = false
+                if gen == self.translationGeneration {
+                    self.translatedText = translated
+                }
+                self.drainQueue()
+            }
         }
     }
 
-    private func translatePartial(_ text: String) {
-        partialInFlight = true
-        translationGeneration += 1
-        let gen = translationGeneration
-
-        translationTask = Task {
-            let translated = await self.getTranslation(text)
-            self.partialInFlight = false
-            guard gen == self.translationGeneration else { return }
-            self.translatedText = translated
-
-            // Drain: if newer text arrived while we were translating, go again
-            if let pending = self.pendingPartialText {
-                self.pendingPartialText = nil
-                self.translatePartial(pending)
-            }
+    private func lastSentenceEndIndex(in text: String) -> String.Index? {
+        var last: String.Index?
+        for idx in text.indices where Self.sentenceEndChars.contains(text[idx]) {
+            last = idx
         }
+        return last
     }
 
     /// Get translation or pass-through for same-language mode.
