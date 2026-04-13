@@ -18,30 +18,84 @@ jobs:
       - name: Determine next version
         id: version
         run: |
-          LATEST_TAG=$(git tag -l 'v0.*' --sort=-v:refname | head -1)
+          # Get the latest semver tag (vX.Y.Z only, ignore others)
+          LATEST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
           if [ -z "$LATEST_TAG" ]; then
-            NEXT="0.1.0"
-          else
-            # Strip 'v' prefix and bump patch
-            VER="${LATEST_TAG#v}"
-            MAJOR=$(echo "$VER" | cut -d. -f1)
-            MINOR=$(echo "$VER" | cut -d. -f2)
-            PATCH=$(echo "$VER" | cut -d. -f3)
-            NEXT="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            LATEST_TAG="v0.0.0"
           fi
-          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
-          echo "tag=v$NEXT" >> "$GITHUB_OUTPUT"
-          echo "Next version: $NEXT"
+          echo "Latest tag: $LATEST_TAG"
+
+          # Parse current version
+          VERSION="${LATEST_TAG#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          # Get commits since last tag
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --oneline)
+          else
+            COMMITS=$(git log "${LATEST_TAG}..HEAD" --oneline)
+          fi
+
+          # Skip if no new commits since last tag
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits since $LATEST_TAG — skipping release"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Commits since $LATEST_TAG:"
+          echo "$COMMITS"
+
+          # Determine bump type from HEAD commit message:
+          #   "BREAKING:" → major (0.x.x → 1.0.0)
+          #   "feat:" or "feature:" → minor (0.1.x → 0.2.0)
+          #   Everything else → patch (0.1.1 → 0.1.2)
+          HEAD_MSG=$(git log -1 --format="%s")
+          echo "HEAD commit: $HEAD_MSG"
+
+          if echo "$HEAD_MSG" | grep -qiE "^BREAKING[:(]|^break[:(]"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            BUMP="major"
+          elif echo "$HEAD_MSG" | grep -qiE "^feat[:(]|^feature[:(]"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            BUMP="minor"
+          else
+            PATCH=$((PATCH + 1))
+            BUMP="patch (default)"
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Bump: $BUMP → v${NEW_VERSION}"
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          # Generate release notes from commits
+          NOTES=$(echo "$COMMITS" | sed 's/^[a-f0-9]* /- /')
+          {
+            echo "notes<<NOTES_EOF"
+            echo "$NOTES"
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set version in project
+        if: steps.version.outputs.skip != 'true'
         run: |
           sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ steps.version.outputs.version }};/g" \
             Nochi.xcodeproj/project.pbxproj
 
       - name: Select Xcode
+        if: steps.version.outputs.skip != 'true'
         run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
 
       - name: Build
+        if: steps.version.outputs.skip != 'true'
         run: |
           xcodebuild archive \
             -project Nochi.xcodeproj \
@@ -54,18 +108,22 @@ jobs:
             -quiet
 
       - name: Package
+        if: steps.version.outputs.skip != 'true'
         run: |
           APP="build/Nochi.xcarchive/Products/Applications/Nochi.app"
-          ditto -c -k --keepParent "$APP" "Nochi-${{ steps.version.outputs.tag }}.zip"
+          ditto -c -k --keepParent "$APP" "Nochi-v${{ steps.version.outputs.version }}.zip"
 
       - name: Create release
+        if: steps.version.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ steps.version.outputs.notes }}
         run: |
-          git tag "${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
-          gh release create "${{ steps.version.outputs.tag }}" \
-            "Nochi-${{ steps.version.outputs.tag }}.zip" \
-            --title "Nochi ${{ steps.version.outputs.tag }}" \
-            --generate-notes \
+          printf '%s\n' "$RELEASE_NOTES" > "$RUNNER_TEMP/release_notes.md"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+          gh release create "v${{ steps.version.outputs.version }}" \
+            "Nochi-v${{ steps.version.outputs.version }}.zip" \
+            --title "Nochi v${{ steps.version.outputs.version }}" \
+            --notes-file "$RUNNER_TEMP/release_notes.md" \
             --latest
