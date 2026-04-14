@@ -94,7 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             model.$overlayWidth.map { _ in () }.eraseToAnyPublisher(),
             model.$overlayHeight.map { _ in () }.eraseToAnyPublisher(),
             model.$isOverlayVisible.map { _ in () }.eraseToAnyPublisher(),
-            model.$selectedScreenID.map { _ in () }.eraseToAnyPublisher()
+            model.$selectedScreenID.map { _ in () }.eraseToAnyPublisher(),
+            model.$autoCommitWordCount.map { _ in () }.eraseToAnyPublisher(),
+            model.$maxDisplayChars.map { _ in () }.eraseToAnyPublisher()
         )
         .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
         .sink { [weak self] in

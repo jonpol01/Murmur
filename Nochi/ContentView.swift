@@ -41,6 +41,7 @@ struct ContentView: View {
                 speechEngineSection
                 displaySection
                 appearanceSection
+                commitBehaviorSection
                 permissionsSection
                 shortcutsSection
             }
@@ -163,6 +164,29 @@ struct ContentView: View {
             sliderRow(label: "Font size", value: $model.fontSize, range: 12...40, step: 1)
             sliderRow(label: "Overlay width", value: $model.overlayWidth, range: 400...1200, step: 10)
             sliderRow(label: "Overlay height", value: $model.overlayHeight, range: 120...300, step: 5)
+        }
+    }
+
+    // MARK: - Commit Behavior
+
+    private var commitBehaviorSection: some View {
+        SettingsSection(title: "Commit Behavior") {
+            HStack {
+                Text("Auto-commit after")
+                    .frame(width: 120, alignment: .leading)
+                Picker("", selection: $model.autoCommitWordCount) {
+                    Text("Disabled").tag(0)
+                    ForEach([5, 8, 10, 12, 15, 20, 25, 30], id: \.self) { n in
+                        Text("\(n) words").tag(n)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 140)
+            }
+            sliderRow(label: "Max display chars", value: Binding(
+                get: { Double(model.maxDisplayChars) },
+                set: { model.maxDisplayChars = Int($0) }
+            ), range: 40...200, step: 10)
         }
     }
 

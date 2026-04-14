@@ -67,6 +67,8 @@ final class TranslatorModel: ObservableObject {
     @Published var overlayHeight: Double = 160
     @Published var isOverlayVisible: Bool = true
     @Published var selectedScreenID: CGDirectDisplayID = 0
+    @Published var autoCommitWordCount: Int = 0    // 0 = disabled
+    @Published var maxDisplayChars: Int = 80
 
     // WhisperKit
     @Published var whisperModelState: WhisperModelState = .notDownloaded
@@ -89,6 +91,8 @@ final class TranslatorModel: ObservableObject {
         static let overlayHeight = "overlayHeight"
         static let isOverlayVisible = "isOverlayVisible"
         static let selectedScreenID = "selectedScreenID"
+        static let autoCommitWordCount = "autoCommitWordCount"
+        static let maxDisplayChars = "maxDisplayChars"
     }
 
     private init() {}
@@ -249,11 +253,28 @@ final class TranslatorModel: ObservableObject {
             committedSentenceCount = completedCount
         }
 
-        // Display only the trailing fragment (capped to ~80 chars)
+        // Display only the trailing fragment (capped to maxDisplayChars)
         var tail = hasTrailing ? (parts.last ?? "") : ""
-        if tail.count > 80 {
-            tail = String(tail.suffix(80))
+        if tail.count > maxDisplayChars {
+            tail = String(tail.suffix(maxDisplayChars))
         }
+
+        // Auto-commit by word count: if enabled and tail exceeds threshold, commit immediately
+        let fullTail = hasTrailing ? (parts.last ?? "") : ""
+        let wordCount = fullTail.split(separator: " ").count
+        if autoCommitWordCount > 0 && wordCount >= autoCommitWordCount {
+            let toCommit = fullTail.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !toCommit.isEmpty && !isDuplicate(toCommit) {
+                pendingCommits.append(toCommit)
+                committedSentenceCount += 1
+            }
+            originalText = ""
+            translatedText = ""
+            pendingPartialText = nil
+            drainQueue()
+            return
+        }
+
         originalText = tail
         if !tail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             pendingPartialText = tail
@@ -420,6 +441,8 @@ final class TranslatorModel: ObservableObject {
         overlayHeight = clamp(defaults.object(forKey: DefaultsKey.overlayHeight) as? Double ?? overlayHeight, lower: 120, upper: 300)
         isOverlayVisible = defaults.object(forKey: DefaultsKey.isOverlayVisible) as? Bool ?? true
         selectedScreenID = CGDirectDisplayID(defaults.object(forKey: DefaultsKey.selectedScreenID) as? UInt32 ?? 0)
+        autoCommitWordCount = max(0, min(30, defaults.object(forKey: DefaultsKey.autoCommitWordCount) as? Int ?? 0))
+        maxDisplayChars = max(40, min(200, defaults.object(forKey: DefaultsKey.maxDisplayChars) as? Int ?? 80))
         isListening = false
     }
 
@@ -435,6 +458,8 @@ final class TranslatorModel: ObservableObject {
         defaults.set(overlayHeight, forKey: DefaultsKey.overlayHeight)
         defaults.set(isOverlayVisible, forKey: DefaultsKey.isOverlayVisible)
         defaults.set(selectedScreenID, forKey: DefaultsKey.selectedScreenID)
+        defaults.set(autoCommitWordCount, forKey: DefaultsKey.autoCommitWordCount)
+        defaults.set(maxDisplayChars, forKey: DefaultsKey.maxDisplayChars)
     }
 
     private func clamp(_ value: Double, lower: Double, upper: Double) -> Double {
