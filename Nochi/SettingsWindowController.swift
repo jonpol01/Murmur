@@ -13,7 +13,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Nochi Settings"
+        window.title = String(localized: "settings.title")
         window.contentViewController = hosting
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 500, height: 400)

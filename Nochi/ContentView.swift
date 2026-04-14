@@ -33,7 +33,7 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Nochi Settings")
+                Text(String(localized: "settings.title"))
                     .font(.title2.bold())
                     .padding(.bottom, 4)
 
@@ -41,6 +41,7 @@ struct ContentView: View {
                 speechEngineSection
                 displaySection
                 appearanceSection
+                commitBehaviorSection
                 permissionsSection
                 shortcutsSection
             }
@@ -55,9 +56,9 @@ struct ContentView: View {
     // MARK: - Languages
 
     private var languagesSection: some View {
-        SettingsSection(title: "Languages") {
+        SettingsSection(title: String(localized: "settings.languages")) {
             HStack {
-                Text("Source language")
+                Text(String(localized: "settings.sourceLanguage"))
                     .frame(width: 120, alignment: .leading)
                 Picker("", selection: $model.sourceLanguageCode) {
                     ForEach(supportedLanguages, id: \.code) { lang in
@@ -69,7 +70,7 @@ struct ContentView: View {
             }
 
             HStack {
-                Text("Target language")
+                Text(String(localized: "settings.targetLanguage"))
                     .frame(width: 120, alignment: .leading)
                 Picker("", selection: $model.targetLanguageCode) {
                     ForEach(supportedLanguages.filter { $0.code != "auto" }, id: \.code) { lang in
@@ -85,7 +86,7 @@ struct ContentView: View {
     // MARK: - Speech Engine
 
     private var speechEngineSection: some View {
-        SettingsSection(title: "Speech Engine") {
+        SettingsSection(title: String(localized: "settings.speechEngine")) {
             Picker("Engine", selection: $model.speechEngine) {
                 ForEach(TranslatorModel.SpeechEngine.allCases, id: \.self) { engine in
                     Text(engine.label).tag(engine)
@@ -100,10 +101,10 @@ struct ContentView: View {
                         HStack {
                             Image(systemName: "arrow.down.circle")
                                 .foregroundStyle(.secondary)
-                            Text("WhisperKit model not downloaded")
+                            Text(String(localized: "settings.whisperNotDownloaded"))
                                 .foregroundStyle(.secondary)
                         }
-                        Text("Add the WhisperKit SPM package to enable local Whisper transcription.")
+                        Text(String(localized: "settings.whisperHelp"))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     case .downloading(let progress):
@@ -112,7 +113,7 @@ struct ContentView: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
-                            Text("WhisperKit model ready")
+                            Text(String(localized: "settings.whisperReady"))
                         }
                     case .error(let message):
                         HStack {
@@ -131,7 +132,7 @@ struct ContentView: View {
     // MARK: - Display
 
     private var displaySection: some View {
-        SettingsSection(title: "Display") {
+        SettingsSection(title: String(localized: "settings.display")) {
             Picker("Mode", selection: $model.displayMode) {
                 ForEach(TranslatorModel.DisplayMode.allCases, id: \.self) { mode in
                     Text(mode.label).tag(mode)
@@ -140,10 +141,10 @@ struct ContentView: View {
             .pickerStyle(.segmented)
 
             HStack {
-                Text("Show overlay on")
+                Text(String(localized: "settings.showOverlayOn"))
                     .frame(width: 120, alignment: .leading)
                 Picker("", selection: $model.selectedScreenID) {
-                    Text("Auto (Built-in)").tag(CGDirectDisplayID(0))
+                    Text(String(localized: "settings.autoBuiltIn")).tag(CGDirectDisplayID(0))
                     ForEach(screenDescriptors(), id: \.id) { screen in
                         Text(screen.localizedName).tag(screen.id)
                     }
@@ -152,38 +153,61 @@ struct ContentView: View {
                 .frame(maxWidth: 200)
             }
 
-            Toggle("Show overlay", isOn: $model.isOverlayVisible)
+            Toggle(String(localized: "settings.showOverlay"), isOn: $model.isOverlayVisible)
         }
     }
 
     // MARK: - Appearance
 
     private var appearanceSection: some View {
-        SettingsSection(title: "Appearance") {
-            sliderRow(label: "Font size", value: $model.fontSize, range: 12...40, step: 1)
-            sliderRow(label: "Overlay width", value: $model.overlayWidth, range: 400...1200, step: 10)
-            sliderRow(label: "Overlay height", value: $model.overlayHeight, range: 120...300, step: 5)
+        SettingsSection(title: String(localized: "settings.appearance")) {
+            sliderRow(label: String(localized: "settings.fontSize"), value: $model.fontSize, range: 12...40, step: 1)
+            sliderRow(label: String(localized: "settings.overlayWidth"), value: $model.overlayWidth, range: 400...1200, step: 10)
+            sliderRow(label: String(localized: "settings.overlayHeight"), value: $model.overlayHeight, range: 120...300, step: 5)
+        }
+    }
+
+    // MARK: - Commit Behavior
+
+    private var commitBehaviorSection: some View {
+        SettingsSection(title: String(localized: "settings.commitBehavior")) {
+            HStack {
+                Text(String(localized: "settings.autoCommitAfter"))
+                    .frame(width: 120, alignment: .leading)
+                Picker("", selection: $model.autoCommitWordCount) {
+                    Text(String(localized: "settings.disabled")).tag(0)
+                    ForEach([5, 8, 10, 12, 15, 20, 25, 30], id: \.self) { n in
+                        Text(String(format: String(localized: "settings.nWords"), n)).tag(n)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 140)
+            }
+            sliderRow(label: String(localized: "settings.maxDisplayChars"), value: Binding(
+                get: { Double(model.maxDisplayChars) },
+                set: { model.maxDisplayChars = Int($0) }
+            ), range: 40...200, step: 10)
         }
     }
 
     // MARK: - Permissions
 
     private var permissionsSection: some View {
-        SettingsSection(title: "Permissions") {
+        SettingsSection(title: String(localized: "settings.permissions")) {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("Audio Recording")
+                Text(String(localized: "settings.audioRecording"))
                 Spacer()
             }
 
             HStack {
                 Image(systemName: speechAuthStatus == .authorized ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(speechAuthStatus == .authorized ? .green : .secondary)
-                Text("Speech Recognition")
+                Text(String(localized: "settings.speechRecognition"))
                 Spacer()
                 if speechAuthStatus != .authorized {
-                    Button("Request") {
+                    Button(String(localized: "settings.request")) {
                         Task {
                             speechAuthStatus = await AppleSpeechRecognizer.requestAuthorization()
                         }
@@ -197,7 +221,7 @@ struct ContentView: View {
     // MARK: - Shortcuts
 
     private var shortcutsSection: some View {
-        SettingsSection(title: "Keyboard Shortcuts") {
+        SettingsSection(title: String(localized: "settings.keyboardShortcuts")) {
             ForEach(ShortcutCommand.allCases, id: \.self) { command in
                 HStack {
                     Text(command.displayShortcut)

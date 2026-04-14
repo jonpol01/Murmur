@@ -1,0 +1,330 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "settings.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nochi Settings" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Nochi 設定" } }
+      }
+    },
+    "settings.languages" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Languages" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "言語" } }
+      }
+    },
+    "settings.sourceLanguage" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source language" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ソース言語" } }
+      }
+    },
+    "settings.targetLanguage" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Target language" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ターゲット言語" } }
+      }
+    },
+    "settings.speechEngine" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech Engine" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "音声エンジン" } }
+      }
+    },
+    "settings.whisperNotDownloaded" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKit model not downloaded" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKitモデル未ダウンロード" } }
+      }
+    },
+    "settings.whisperHelp" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add the WhisperKit SPM package to enable local Whisper transcription." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKit SPMパッケージを追加してローカルWhisper転写を有効にしてください。" } }
+      }
+    },
+    "settings.whisperReady" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKit model ready" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKitモデル準備完了" } }
+      }
+    },
+    "settings.display" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Display" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ディスプレイ" } }
+      }
+    },
+    "settings.showOverlayOn" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show overlay on" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイ表示先" } }
+      }
+    },
+    "settings.autoBuiltIn" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto (Built-in)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "自動（内蔵）" } }
+      }
+    },
+    "settings.showOverlay" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show overlay" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイを表示" } }
+      }
+    },
+    "settings.appearance" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "外観" } }
+      }
+    },
+    "settings.fontSize" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Font size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ" } }
+      }
+    },
+    "settings.overlayWidth" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overlay width" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイ幅" } }
+      }
+    },
+    "settings.overlayHeight" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overlay height" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイ高さ" } }
+      }
+    },
+    "settings.commitBehavior" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Commit Behavior" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "確定動作" } }
+      }
+    },
+    "settings.autoCommitAfter" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto-commit after" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "自動確定（単語数）" } }
+      }
+    },
+    "settings.disabled" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Disabled" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "無効" } }
+      }
+    },
+    "settings.nWords" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d words" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%d語" } }
+      }
+    },
+    "settings.maxDisplayChars" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Max display chars" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "最大表示文字数" } }
+      }
+    },
+    "settings.permissions" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permissions" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "権限" } }
+      }
+    },
+    "settings.audioRecording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio Recording" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーディオ録音" } }
+      }
+    },
+    "settings.speechRecognition" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech Recognition" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "音声認識" } }
+      }
+    },
+    "settings.request" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "許可を求める" } }
+      }
+    },
+    "settings.keyboardShortcuts" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard Shortcuts" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キーボードショートカット" } }
+      }
+    },
+    "engine.appleSpeech" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Speech" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Apple Speech" } }
+      }
+    },
+    "engine.whisperKit" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKit" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "WhisperKit" } }
+      }
+    },
+    "display.translationOnly" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Translation Only" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "翻訳のみ" } }
+      }
+    },
+    "display.both" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Original + Translation" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "原文＋翻訳" } }
+      }
+    },
+    "overlay.readySubtitles" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready for subtitles" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "字幕の準備完了" } }
+      }
+    },
+    "overlay.readyTranslate" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to translate" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "翻訳の準備完了" } }
+      }
+    },
+    "overlay.stopListening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop listening" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング停止" } }
+      }
+    },
+    "overlay.startListening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start listening" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング開始" } }
+      }
+    },
+    "overlay.listening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Listening…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング中…" } }
+      }
+    },
+    "overlay.moveToDisplay" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Move to next display" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "次のディスプレイへ移動" } }
+      }
+    },
+    "overlay.translationOnly" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Translation only" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "翻訳のみ" } }
+      }
+    },
+    "overlay.showOriginal" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show original + translation" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "原文＋翻訳を表示" } }
+      }
+    },
+    "overlay.decreaseFont" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decrease font size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ縮小" } }
+      }
+    },
+    "overlay.increaseFont" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Increase font size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ拡大" } }
+      }
+    },
+    "overlay.quit" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit Nochi" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Nochiを終了" } }
+      }
+    },
+    "menu.startListening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start Listening" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング開始" } }
+      }
+    },
+    "menu.stopListening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop Listening" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング停止" } }
+      }
+    },
+    "menu.showOverlay" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show Overlay" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイを表示" } }
+      }
+    },
+    "menu.displayMode" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Display Mode" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "表示モード" } }
+      }
+    },
+    "menu.increaseFontSize" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Increase Font Size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ拡大" } }
+      }
+    },
+    "menu.decreaseFontSize" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decrease Font Size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ縮小" } }
+      }
+    },
+    "menu.settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定…" } }
+      }
+    },
+    "menu.quit" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit Nochi" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Nochiを終了" } }
+      }
+    },
+    "shortcut.toggleListening" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start / Stop Listening" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リスニング開始/停止" } }
+      }
+    },
+    "shortcut.toggleOverlay" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Overlay" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オーバーレイ切替" } }
+      }
+    },
+    "shortcut.toggleDisplayMode" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Display Mode" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "表示モード切替" } }
+      }
+    },
+    "shortcut.increaseFont" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Increase Font Size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ拡大" } }
+      }
+    },
+    "shortcut.decreaseFont" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decrease Font Size" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フォントサイズ縮小" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

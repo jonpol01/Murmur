@@ -94,7 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             model.$overlayWidth.map { _ in () }.eraseToAnyPublisher(),
             model.$overlayHeight.map { _ in () }.eraseToAnyPublisher(),
             model.$isOverlayVisible.map { _ in () }.eraseToAnyPublisher(),
-            model.$selectedScreenID.map { _ in () }.eraseToAnyPublisher()
+            model.$selectedScreenID.map { _ in () }.eraseToAnyPublisher(),
+            model.$autoCommitWordCount.map { _ in () }.eraseToAnyPublisher(),
+            model.$maxDisplayChars.map { _ in () }.eraseToAnyPublisher()
         )
         .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
         .sink { [weak self] in
@@ -136,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let menu = NSMenu()
 
         let toggleListening = NSMenuItem(
-            title: "Start Listening",
+            title: String(localized: "menu.startListening"),
             action: #selector(toggleListeningAction),
             keyEquivalent: ShortcutCommand.toggleListening.keyEquivalent
         )
@@ -146,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         toggleListeningItem = toggleListening
 
         let showOverlay = NSMenuItem(
-            title: "Show Overlay",
+            title: String(localized: "menu.showOverlay"),
             action: #selector(toggleOverlayVisibility),
             keyEquivalent: ShortcutCommand.toggleOverlay.keyEquivalent
         )
@@ -156,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         showOverlayItem = showOverlay
 
         let displayMode = NSMenuItem(
-            title: "Display Mode",
+            title: String(localized: "menu.displayMode"),
             action: #selector(toggleDisplayMode),
             keyEquivalent: ShortcutCommand.toggleDisplayMode.keyEquivalent
         )
@@ -166,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         displayModeItem = displayMode
 
         let fontUp = NSMenuItem(
-            title: "Increase Font Size",
+            title: String(localized: "menu.increaseFontSize"),
             action: #selector(increaseFontSize),
             keyEquivalent: ShortcutCommand.fontUp.keyEquivalent
         )
@@ -175,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         menu.addItem(fontUp)
 
         let fontDown = NSMenuItem(
-            title: "Decrease Font Size",
+            title: String(localized: "menu.decreaseFontSize"),
             action: #selector(decreaseFontSize),
             keyEquivalent: ShortcutCommand.fontDown.keyEquivalent
         )
@@ -187,13 +189,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         menu.addItem(.separator())
 
-        let settings = NSMenuItem(title: "Settings\u{2026}", action: #selector(openSettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: String(localized: "menu.settings"), action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit Nochi", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: String(localized: "menu.quit"), action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         quit.keyEquivalentModifierMask = [.command]
         menu.addItem(quit)
@@ -307,7 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem === toggleListeningItem {
-            menuItem.title = model.isListening ? "Stop Listening" : "Start Listening"
+            menuItem.title = model.isListening ? String(localized: "menu.stopListening") : String(localized: "menu.startListening")
             return true
         }
         if menuItem === showOverlayItem {
@@ -315,7 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             return true
         }
         if menuItem === displayModeItem {
-            menuItem.title = model.displayMode == .both ? "Translation Only" : "Original + Translation"
+            menuItem.title = model.displayMode == .both ? String(localized: "display.translationOnly") : String(localized: "display.both")
             return true
         }
         return true
